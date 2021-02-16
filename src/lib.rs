@@ -170,12 +170,6 @@ impl LanguageModel {
     }
 
     pub fn get_next_state(&self, lm_state: LMState, symbol: &str) -> LMState {
-        // Reset the state when the sentence ends
-        match symbol {
-            "." | "?" | "!" => return LMState::default(),
-            _ => {}
-        }
-
         let mut lm_state = lm_state;
 
         // Try to translate the symbol into a label
