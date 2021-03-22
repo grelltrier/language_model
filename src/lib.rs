@@ -55,27 +55,33 @@ pub struct LanguageModel {
     trigrams: Vec<Trigram>,
 }
 impl LanguageModel {
+    /// Read the language model from text files
+    /// The filename of the symbol table and the n-grams must be provided
     pub fn read_from_text(
         fname_symt: &str,
         fname_unigrams: &str,
         fname_bigrams: &str,
         fname_trigrams: &str,
     ) -> Self {
+        // Load the symbol table
         let mut symt = IndexSet::new();
         for symbol in SymtIterator::new(fname_symt) {
             symt.insert(symbol);
         }
         symt.shrink_to_fit();
+        // Load the unigrams
         let mut unigrams = Vec::new();
         for unigram in UnigramIterator::new(fname_unigrams) {
             unigrams.push(unigram);
         }
         unigrams.shrink_to_fit();
+        // Load the bigrams
         let mut bigrams = Vec::new();
         for bigram in BigramIterator::new(fname_bigrams) {
             bigrams.push(bigram);
         }
         bigrams.shrink_to_fit();
+        // Load the trigrams
         let mut trigrams = Vec::new();
         for trigram in TrigramIterator::new(fname_trigrams) {
             trigrams.push(trigram);
@@ -90,12 +96,14 @@ impl LanguageModel {
         }
     }
 
+    /// Serialize the language model, compress and write it to a file
     pub fn write(&self, fname: &str) -> Result<(), Box<bincode::ErrorKind>> {
         let file = File::create(fname).unwrap();
         let encoder = GzEncoder::new(file, Compression::default());
         bincode::serialize_into(encoder, self)
     }
 
+    /// Read the language model from a compressed file and deserialize it
     pub fn read(fname: &str) -> Result<Self, Box<bincode::ErrorKind>> {
         let file = File::open(fname).unwrap();
         let buf_reader = BufReader::new(file);
@@ -103,59 +111,68 @@ impl LanguageModel {
         bincode::deserialize_from(decoder)
     }
 
+    /// Get the predictions for the current state
     pub fn predict(&self, lm_state: LMState, max_no_predictions: usize) -> Vec<(&String, LogProb)> {
         let mut lm_state = lm_state;
 
         let mut predictions = HashMap::with_capacity(max_no_predictions);
         let mut backoff = 0;
 
+        // If the current state is associated with bigrams...
         if lm_state.context_len == LMContext::Two {
+            // .. read the information of all outgoing transitions from the trigram vec
             for (label, log_prob, _) in self
                 .trigrams
                 .iter()
                 .skip(lm_state.ngrams_offset)
                 .take(lm_state.ngrams_no)
             {
+                // add the label and its likelihood to the HashMap storing the predictions
                 predictions.entry(*label).or_insert(*log_prob);
-                // predictions.insert(*label, *log_prob);
             }
-            // TODO: this condition could be improved by backing off if the lowest likelihood is lower than the backoff likelihood
+            // If not enough predictions were found, backoff and continue from the new state
             if predictions.len() < max_no_predictions {
                 lm_state = self.backoff(lm_state);
                 backoff += 1;
             }
         }
+        // If the current state is associated with unigrams...
         if lm_state.context_len == LMContext::One {
             let backoff_penalty = backoff as f32 * BACKOFF_WEIGHT;
+            // .. read the information of all outgoing transitions from the bigram vec
             for (label, log_prob, _, _) in self
                 .bigrams
                 .iter()
                 .skip(lm_state.ngrams_offset)
                 .take(lm_state.ngrams_no)
             {
+                // Add the label and its likelihood to the HashMap storing the predictions
                 // The probabilities are added because they are the neg log probs
                 predictions
                     .entry(*label)
                     .or_insert(*log_prob + backoff_penalty);
-                //predictions.insert(*label, *log_prob + backoff_penalty);
             }
+            // If not enough predictions were found, backoff and continue from the new state
             if predictions.len() < max_no_predictions {
                 lm_state = self.backoff(lm_state);
                 backoff += 1;
             }
         }
 
+        // If the current state is the initial state...
         if lm_state.context_len == LMContext::Zero {
             let backoff_penalty = backoff as f32 * BACKOFF_WEIGHT;
+            // .. read the information of all outgoing transitions from the unigram vec
             for (idx, (log_prob, _, _)) in self.unigrams.iter().enumerate() {
+                // Add the label and its likelihood to the HashMap storing the predictions
                 // The probabilities are added because they are the neg log probs
                 predictions
                     .entry(idx as u32)
                     .or_insert(*log_prob + backoff_penalty);
-                //predictions.insert(idx as u32, *log_prob + backoff_penalty);
             }
         }
 
+        // Sort the predictions by their probability
         let mut predictions = Vec::from_iter(predictions);
         predictions.sort_by(|&(_, a), &(_, b)| b.partial_cmp(&a).unwrap_or(Ordering::Equal));
 
@@ -169,33 +186,45 @@ impl LanguageModel {
         final_predictions
     }
 
+    /// Get the next state the model transitions to when starting in the provided state and reading
+    /// the symbol
     pub fn get_next_state(&self, lm_state: LMState, symbol: &str) -> LMState {
         let mut lm_state = lm_state;
 
         // Try to translate the symbol into a label
-        // If we can't find the symbol, it is not a known word so the next state is the starting state
+        // If we can't find the symbol, it is not a known word so the next state is the initial state
         let label = match self.symt.get_index_of(symbol) {
             Some(known_label) => known_label,
             None => return LMState::default(),
         };
 
+        // If the current state is associated with a bigram..
         if lm_state.context_len == LMContext::Two {
+            // check if an outgoing transition is possible with the provided label
+            // if there is one, return the destination state
             if let Some(new_state) = self.try_finding_trigram_trs(label as u32, lm_state) {
                 return new_state;
             } else {
+                // Otherwise backoff
                 lm_state = self.backoff(lm_state);
             }
         }
+        // If the current state is associated with a unigram..
         if lm_state.context_len == LMContext::One {
+            // check if an outgoing transition is possible with the provided label
+            // if there is one, return the destination state
             if let Some(new_state) = self.try_finding_bigram_trs(label as u32, lm_state) {
                 return new_state;
             } else {
+                // Otherwise backoff
                 lm_state = self.backoff(lm_state);
             }
         }
+        // Return the transition from the initial state
         self.finding_unigram_trs(label, lm_state)
     }
 
+    /// Backoff to a state associated with suffix
     fn backoff(&self, start_state: LMState) -> LMState {
         // Destructure the state
         let LMState {
