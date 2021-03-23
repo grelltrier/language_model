@@ -242,7 +242,7 @@ impl LanguageModel {
             LMContext::Two => {
                 let last_processed_label = last_processed_label as usize;
                 LMState {
-                    last_processed_label: last_processed_label as Label, // TODO: Previously was last_processed_label: 0,
+                    last_processed_label: last_processed_label as Label,
                     ngrams_offset: self.unigrams[last_processed_label].1 as usize,
                     ngrams_no: self.unigrams[last_processed_label as usize].2 as usize,
                     context_len: LMContext::One,
