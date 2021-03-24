@@ -9,6 +9,9 @@ use std::{cmp::Ordering, collections::HashMap, fs::File, io::BufReader, iter::Fr
 pub mod utilities;
 use utilities::*;
 
+#[cfg(test)]
+mod tests;
+
 const BACKOFF_WEIGHT: f32 = -0.916290731874155; // ln(0.4)
 
 type Symbol = String;
@@ -112,7 +115,7 @@ impl LanguageModel {
     }
 
     /// Get the predictions for the current state
-    pub fn predict(&self, lm_state: LMState, max_no_predictions: usize) -> Vec<(&String, LogProb)> {
+    pub fn predict(&self, lm_state: LMState, max_no_predictions: usize) -> Vec<(&str, LogProb)> {
         let mut lm_state = lm_state;
 
         let mut predictions = HashMap::with_capacity(max_no_predictions);
@@ -177,7 +180,7 @@ impl LanguageModel {
         predictions.sort_by(|&(_, a), &(_, b)| b.partial_cmp(&a).unwrap_or(Ordering::Equal));
 
         // Translate the labels into symbols
-        let mut final_predictions = Vec::new();
+        let mut final_predictions: Vec<(&str, f32)> = Vec::new();
         let mut symbol;
         for (label, log_prob) in predictions.iter().take(max_no_predictions) {
             symbol = &self.symt[*label as usize];

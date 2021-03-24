@@ -1,1 +1,1 @@
-/home/batman/Documents/Studium/Master/Masterarbeit/Code/next_word_prediction/LanguageModel_TEST/ngrams_result/2gms.txt
+../../ngrams_to_language_model/LanguageModel_TEST/ngrams_result/2gms.txt
