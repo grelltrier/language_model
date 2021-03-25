@@ -218,13 +218,10 @@ impl LanguageModel {
             // if there is one, return the destination state
             if let Some(new_state) = self.try_finding_bigram_trs(label as u32, lm_state) {
                 return new_state;
-            } else {
-                // Otherwise backoff
-                lm_state = self.backoff(lm_state);
             }
         }
         // Return the transition from the initial state
-        self.finding_unigram_trs(label, lm_state)
+        self.finding_unigram_trs(label)
     }
 
     /// Backoff to a state associated with suffix
@@ -291,12 +288,11 @@ impl LanguageModel {
         }
     }
 
-    fn finding_unigram_trs(&self, label: usize, lm_state: LMState) -> LMState {
-        let ngrams_offset = lm_state.ngrams_offset;
+    fn finding_unigram_trs(&self, label: usize) -> LMState {
         LMState {
             last_processed_label: label as u32,
-            ngrams_offset: self.unigrams[ngrams_offset].1 as usize,
-            ngrams_no: self.unigrams[ngrams_offset].2 as usize,
+            ngrams_offset: self.unigrams[label].1 as usize,
+            ngrams_no: self.unigrams[label].2 as usize,
             context_len: LMContext::One,
         }
     }

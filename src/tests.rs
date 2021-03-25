@@ -29,14 +29,17 @@ fn cmp(a: Vec<(&str, f32)>, b: Vec<(&str, f32)>) -> bool {
 }
 
 #[test]
-/// Test the language model
-fn test_model() {
+/// Convert the text files to the language model and write it to a
+/// compressed binary file
+fn test_convert_and_load_model() {
+    // Convert the text files to the language model and write it to a compressed file
     convert_text_to_cmprssd_bin(true).unwrap();
     println!("Loading language model from file...");
-    let fname_language_model = "./ngrams_test/language_model.bin";
+    let fname_language_model = "ngrams_test/language_model.bin";
+
+    // Read it from the compressed binary file
     let language_model = LanguageModel::read(fname_language_model).unwrap();
     println!("Done loading");
-    println!();
 
     // Check if language model was loaded correctly
     let mut correct_symt = IndexSet::new();
@@ -61,6 +64,17 @@ fn test_model() {
         trigrams: correct_trigrams,
     };
     assert!(language_model == correct_lm);
+}
+
+#[test]
+/// Test the language model
+fn test_transitions_and_backoffs() {
+    convert_text_to_cmprssd_bin(true).unwrap();
+    println!("Loading language model from file...");
+    let fname_language_model = "ngrams_test/language_model.bin";
+    let language_model = LanguageModel::read(fname_language_model).unwrap();
+    println!("Done loading");
+    println!();
 
     let mut predictions;
     let mut lm_state;
@@ -141,4 +155,291 @@ fn test_model() {
     assert!(cmp(predictions, correct_prediction));
     println!("Backoff okay");
     println!();
+}
+
+#[test]
+/// Test transitioning to the next state (no backoff required)
+fn test_valid_transitions() {
+    convert_text_to_cmprssd_bin(true).unwrap();
+    println!("Loading language model from file...");
+    let fname_language_model = "ngrams_test/language_model.bin";
+    let language_model = LanguageModel::read(fname_language_model).unwrap();
+    println!("Done loading");
+    println!();
+
+    let mut start_state;
+    let mut dest_state;
+    let mut correct_state;
+
+    // Transitions from the initial state (state 0)
+    println!("Transitions from the initial state (state 0)");
+    start_state = LMState::default();
+    correct_state = get_test_state_no(0);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", start_state);
+    println!();
+    assert!(start_state == correct_state);
+
+    // Transition from state 0 to 1
+    println!("Transition from state 0 to 1");
+    dest_state = language_model.get_next_state(start_state, "a");
+    correct_state = get_test_state_no(1);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", dest_state);
+    println!();
+    assert!(dest_state == correct_state);
+
+    // Transition from state 0 to 2
+    println!("Transition from state 0 to 2");
+    dest_state = language_model.get_next_state(start_state, "b");
+    correct_state = get_test_state_no(2);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", dest_state);
+    println!();
+    assert!(dest_state == correct_state);
+
+    // Transition from state 1 to 3
+    println!("Transition from state 1 to 3");
+    start_state = get_test_state_no(1);
+    dest_state = language_model.get_next_state(start_state, "b");
+    correct_state = get_test_state_no(3);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", dest_state);
+    println!();
+    assert!(dest_state == correct_state);
+
+    // Transition from state 2 to 4
+    println!("Transition from state 2 to 4");
+    start_state = get_test_state_no(2);
+    dest_state = language_model.get_next_state(start_state, "a");
+    correct_state = get_test_state_no(4);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", dest_state);
+    println!();
+    assert!(dest_state == correct_state);
+
+    // Transition from state 2 to 5
+    println!("Transition from state 2 to 5");
+    start_state = get_test_state_no(2);
+    dest_state = language_model.get_next_state(start_state, "b");
+    correct_state = get_test_state_no(5);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", dest_state);
+    println!();
+    assert!(dest_state == correct_state);
+
+    // Transition from state 3 to 4
+    println!("Transition from state 3 to 4");
+    start_state = get_test_state_no(3);
+    dest_state = language_model.get_next_state(start_state, "a");
+    correct_state = get_test_state_no(4);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", dest_state);
+    println!();
+    assert!(dest_state == correct_state);
+
+    // Transition from state 3 to 5
+    println!("Transition from state 3 to 5");
+    start_state = get_test_state_no(3);
+    dest_state = language_model.get_next_state(start_state, "b");
+    correct_state = get_test_state_no(5);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", dest_state);
+    println!();
+    assert!(dest_state == correct_state);
+
+    // Transition from state 4 to 3
+    println!("Transition from state 4 to 3");
+    start_state = get_test_state_no(4);
+    dest_state = language_model.get_next_state(start_state, "b");
+    correct_state = get_test_state_no(3);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", dest_state);
+    println!();
+    assert!(dest_state == correct_state);
+
+    // Transition from state 5 to 4
+    println!("Transition from state 5 to 4");
+    start_state = get_test_state_no(5);
+    dest_state = language_model.get_next_state(start_state, "a");
+    correct_state = get_test_state_no(4);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", dest_state);
+    println!();
+    assert!(dest_state == correct_state);
+}
+
+#[test]
+/// Test transitioning to the next state (backoff required)
+fn test_invalid_transitions() {
+    convert_text_to_cmprssd_bin(true).unwrap();
+    println!("Loading language model from file...");
+    let fname_language_model = "ngrams_test/language_model.bin";
+    let language_model = LanguageModel::read(fname_language_model).unwrap();
+    println!("Done loading");
+    println!();
+
+    let mut lm_state;
+    let mut correct_state;
+
+    // Start in state 1 and read input label "a"
+    println!("Start in state 1 and read input label \"a\"");
+    lm_state = get_test_state_no(1);
+    lm_state = language_model.get_next_state(lm_state, "a");
+    correct_state = get_test_state_no(1);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", lm_state);
+    println!();
+    assert!(lm_state == correct_state);
+
+    // Start in state 4 and read input label "a"
+    println!("Start in state 4 and read input label \"a\"");
+    lm_state = get_test_state_no(4);
+    lm_state = language_model.get_next_state(lm_state, "a");
+    correct_state = get_test_state_no(1);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", lm_state);
+    println!();
+    assert!(lm_state == correct_state);
+
+    // Start in state 5 and read input label "b"
+    println!("Start in state 5 and read input label \"b\"");
+    lm_state = get_test_state_no(5);
+    lm_state = language_model.get_next_state(lm_state, "b");
+    correct_state = get_test_state_no(5);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", lm_state);
+    println!();
+    assert!(lm_state == correct_state);
+}
+
+#[test]
+/// Test transitioning to the next state (no backoff required)
+fn test_backoff() {
+    convert_text_to_cmprssd_bin(true).unwrap();
+    println!("Loading language model from file...");
+    let fname_language_model = "ngrams_test/language_model.bin";
+    let language_model = LanguageModel::read(fname_language_model).unwrap();
+    println!("Done loading");
+    println!();
+
+    let mut lm_state;
+    let mut correct_state;
+
+    // Backoff from the initial state (state 0)
+    println!("Backoff from the initial state (state 0)");
+    correct_state = get_test_state_no(0);
+    lm_state = get_test_state_no(0);
+    lm_state = language_model.backoff(lm_state);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", lm_state);
+    println!();
+    assert!(lm_state == correct_state);
+
+    // Backoff from state 1
+    println!("Backoff from state 1");
+    correct_state = get_test_state_no(0);
+    lm_state = get_test_state_no(1);
+    lm_state = language_model.backoff(lm_state);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", lm_state);
+    println!();
+    assert!(lm_state == correct_state);
+
+    // Backoff from state 2
+    println!("Backoff from state 2");
+    correct_state = get_test_state_no(0);
+    lm_state = get_test_state_no(2);
+    lm_state = language_model.backoff(lm_state);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", lm_state);
+    println!();
+    assert!(lm_state == correct_state);
+
+    // Backoff from state 3
+    println!("Backoff from state 3");
+    correct_state = get_test_state_no(2);
+    lm_state = get_test_state_no(3);
+    lm_state = language_model.backoff(lm_state);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", lm_state);
+    println!();
+    assert!(lm_state == correct_state);
+
+    // Backoff from state 4
+    println!("Backoff from state 4");
+    correct_state = get_test_state_no(1);
+    lm_state = get_test_state_no(4);
+    lm_state = language_model.backoff(lm_state);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", lm_state);
+    println!();
+    assert!(lm_state == correct_state);
+
+    // Backoff from state 5
+    println!("Backoff from state 5");
+    correct_state = get_test_state_no(2);
+    lm_state = get_test_state_no(5);
+    lm_state = language_model.backoff(lm_state);
+    println!("correct: {:?}", correct_state);
+    println!("dest   : {:?}", lm_state);
+    println!();
+    assert!(lm_state == correct_state);
+}
+
+fn get_test_state_no(state_no: usize) -> LMState {
+    let last_processed_label;
+    let ngrams_offset;
+    let ngrams_no;
+    let context_len;
+
+    match state_no {
+        0 => {
+            last_processed_label = 0;
+            ngrams_offset = 0;
+            ngrams_no = usize::MAX;
+            context_len = LMContext::Zero
+        }
+        1 => {
+            last_processed_label = 0;
+            ngrams_offset = 0;
+            ngrams_no = 1;
+            context_len = LMContext::One
+        }
+        2 => {
+            last_processed_label = 1;
+            ngrams_offset = 1;
+            ngrams_no = 2;
+            context_len = LMContext::One
+        }
+        3 => {
+            last_processed_label = 1;
+            ngrams_offset = 0;
+            ngrams_no = 2;
+            context_len = LMContext::Two
+        }
+        4 => {
+            last_processed_label = 0;
+            ngrams_offset = 2;
+            ngrams_no = 1;
+            context_len = LMContext::Two
+        }
+        5 => {
+            last_processed_label = 1;
+            ngrams_offset = 3;
+            ngrams_no = 1;
+            context_len = LMContext::Two
+        }
+        _ => {
+            println!("Asked for the invalid state no: {}", state_no);
+            panic!()
+        }
+    }
+
+    LMState {
+        last_processed_label,
+        ngrams_offset,
+        ngrams_no,
+        context_len,
+    }
 }
