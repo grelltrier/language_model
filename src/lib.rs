@@ -304,7 +304,7 @@ impl LanguageModel {
 
 pub fn convert_text_to_cmprssd_bin(test_mode: bool) -> Result<(), Box<bincode::ErrorKind>> {
     let folder = if test_mode {
-        "./ngrams_test/"
+        "ngrams_test/"
     } else {
         "./ngrams/"
     };

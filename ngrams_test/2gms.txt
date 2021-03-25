@@ -1,1 +1,3 @@
-../../ngrams_to_language_model/LanguageModel_TEST/ngrams_result/2gms.txt
+1 -0.40546507 0 2
+0 -0.40546507 2 1
+1 -1.0986123 3 1

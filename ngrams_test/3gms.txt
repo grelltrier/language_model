@@ -1,1 +1,4 @@
-../../ngrams_to_language_model/LanguageModel_TEST/ngrams_result/3gms.txt
+0 -0.6931472 1
+1 -0.6931472 2
+1 -0.6931472 0
+0 0 1
