@@ -186,9 +186,6 @@ impl LanguageModel {
             symbol = &self.symt[*label as usize];
             final_predictions.push((symbol, *log_prob));
         }
-        for (prediction, likelihood) in &final_predictions {
-            println!("{}, {}", prediction, likelihood);
-        }
         final_predictions
     }
 
