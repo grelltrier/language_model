@@ -175,7 +175,7 @@ impl LanguageModel {
             }
         }
 
-        // Sort the predictions by their probability
+        // Sort the predictions by their probability from high to low
         let mut predictions = Vec::from_iter(predictions);
         predictions.sort_by(|&(_, a), &(_, b)| b.partial_cmp(&a).unwrap_or(Ordering::Equal));
 
