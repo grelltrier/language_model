@@ -2,7 +2,7 @@
 name = "language_model"
 version = "0.1.0"
 authors = ["pentamassiv <pentamassiv@posteo.de>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 serde = "1.0"
